@@ -2,8 +2,8 @@
 
 - name: "{{ service_obj.name }} :: Read systemd config"
   shell: |
-    systemctl show --no-page {{ service_obj.name }} | grep CanReload | tr '=' ' ' | awk '{print $2}'
-  register: systemd_unit_config
+    systemctl show -P CanReload {{ service_obj.name }}
+  register: systemd_unit_CanReload | bool
 
 - name: "{{ service_obj.name }} :: Prepare configs"
   copy:
@@ -15,6 +15,3 @@
     content: "{{ item.content }}"
   loop: "{{ service_obj.configs }}"
   notify: "service restart"
-
-- name: "{{ service_obj.name }} :: Decide what to do - restart or reload"
-  
