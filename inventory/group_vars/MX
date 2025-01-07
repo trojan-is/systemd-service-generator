@@ -1,0 +1,23 @@
+---
+systemd_services:
+  - name: "postfix"
+    init: []
+    #   pre_shell_commands: []
+    #   post_shell_commands: []
+    configs: []
+      - path: "/etc/postfix/main.cf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          {% include 'postfix/main.cf.j2' %}
+      - path: "/etc/postfix/master.cf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          {% include 'postfix/master.cf.j2' %}
+    systemd_objects:
+      - name: "postfix.service"
+        enabled: true
+        content: ""

@@ -1,0 +1,22 @@
+---
+- name: "{{ service_obj.name }} :: Configure systemd service"
+  copy:
+    dest: "/usr/lib/systemd/system/{{ item.name }}"
+    owner: "root"
+    group: "root"
+    mode: "644"
+    backup: false
+    content: "{{ item.content }}"
+  loop: "{{ service_obj.systemd_objects }}"
+  when: service_obj.systemd_objects
+  notify: "daemon reload"
+
+- name: run handlers
+  meta: flush_handlers
+
+- name: "{{ service_obj.name }} :: Enable systemd service"
+  ansible.builtin.systemd_service:
+    name: "{{ item.name }}"
+    enabled: "{{ item.enabled | default('false') }}"
+  loop: "{{ service_obj.systemd_objects }}"
+  when: service_obj.systemd_objects

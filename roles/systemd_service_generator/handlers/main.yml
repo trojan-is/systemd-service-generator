@@ -1,0 +1,10 @@
+---
+- name: "daemon reload"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  listen: "daemon reload"
+
+- name: "service restart"
+  ansible.builtin.systemd_service:
+    name: "{{ service_restart_name }}"
+  listen: "service restart"

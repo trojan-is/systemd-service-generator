@@ -1,0 +1,36 @@
+---
+- block:
+    - name: "{{ service_obj.name }} - Init Pre"
+      include: init_pre.yml
+      when:
+        - ansible_call.init | bool
+        - ansible_call.name == service_obj.name
+
+    - name: "{{ service_obj.name }} - Config"
+      include: config.yml
+
+    - name: "{{ service_obj.name }} - Systemd"
+      include: systemd.yml
+
+    - name: "{{ service_obj.name }} - Init Post"
+      include: init_post.yml
+      when:
+        - ansible_call.init | bool
+        - ansible_call.name == service_obj.name
+  when:
+    - not full_init | bool
+
+- block:
+    - name: "{{ service_obj.name }} - Init Pre"
+      include: init_pre.yml
+
+    - name: "{{ service_obj.name }} - Config"
+      include: config.yml
+
+    - name: "{{ service_obj.name }} - Systemd"
+      include: systemd.yml
+
+    - name: "{{ service_obj.name }} - Init Post"
+      include: init_post.yml
+  when:
+    - full_init | bool
