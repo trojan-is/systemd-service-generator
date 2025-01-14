@@ -1,10 +1,18 @@
 ---
+packages:
+  - "postfix"
+  - "postfix-pcre"
+  - "opendmarc"
+  - "postfix-policyd-spf-python"
+  - "opendkim"
+  - "opendkim-tools"
+
 systemd_services:
   - name: "postfix"
     init: []
     #   pre_shell_commands: []
     #   post_shell_commands: []
-    configs: []
+    configs:
       - path: "/etc/postfix/main.cf"
         owner: "root"
         group: "root"
@@ -17,7 +25,120 @@ systemd_services:
         backup: true
         content: |
           {% include 'postfix/master.cf.j2' %}
+
     systemd_objects:
       - name: "postfix.service"
         enabled: true
-        content: ""
+        # content: ""
+
+  - name: "opendmarc"
+    init: []
+      pre_shell_commands:
+        - "mkdir -p /var/spool/postfix/opendmarc"
+        - "chown -R opendmarc:opendmarc /var/spool/postfix/opendmarc"
+        - "chmod -R 750 /var/spool/postfix/opendmarc/"
+        - "adduser postfix opendmarc"
+    #   post_shell_commands: []
+    configs:
+      - path: "/etc/opendmarc.conf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          PidFile /run/opendmarc/opendmarc.pid
+          PublicSuffixList /usr/share/publicsuffix/public_suffix_list.dat
+          RejectFailures true
+          Socket local:/var/spool/postfix/opendmarc/opendmarc.sock
+          Syslog true
+          TrustedAuthservIDs "{{ ansible_fqdn }}"
+          UMask 0002
+          UserID opendmarc
+          RequiredHeaders true
+          SPFSelfValidate true
+
+    systemd_objects:
+      - name: "opendmarc.service"
+        enabled: true
+        # content: ""
+
+  - name: "opendkim"
+    init: []
+      pre_shell_commands:
+        - "gpasswd -a postfix opendkim"
+        - "mkdir /var/spool/postfix/opendkim"
+        - "chown opendkim:postfix /var/spool/postfix/opendkim"
+        - ""
+        - "mkdir -p /etc/opendkim/keys"
+        - "chown -R opendkim:opendkim /etc/opendkim"
+        - "chmod 744 /etc/opendkim/keys"
+        - "mkdir /etc/opendkim/keys/{{ ansible_domain }}"
+        - "opendkim-genkey -b 2048 -d {{ ansible_domain }} -D /etc/opendkim/keys/{{ ansible_domain }} -s default -v"
+        - "chown opendkim:opendkim /etc/opendkim/keys/{{ ansible_domain }}/default.private"
+        - "chmod 600 /etc/opendkim/keys/{{ ansible_domain }}/default.private"
+    #   post_shell_commands: []
+    configs:
+      - path: "/etc/opendkim/signing.table"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          *@"{{ ansible_domain }}"     default._domainkey."{{ ansible_domain }}"
+          *@*."{{ ansible_domain }}"    default._domainkey."{{ ansible_domain }}"
+
+      - path: "/etc/opendkim/key.table"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          default._domainkey."{{ ansible_domain }}"     "{{ ansible_domain }}":default:/etc/opendkim/keys/"{{ ansible_domain }}"/default.private
+
+      - path: "/etc/opendkim/trusted.hosts"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          127.0.0.1
+          localhost
+          ."{{ ansible_domain }}"
+
+      - path: "/etc/default/opendkim"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          RUNDIR=/run/opendkim
+          SOCKET=local:/var/spool/postfix/opendkim/opendkim.sock
+          USER=opendkim
+          GROUP=opendkim
+          PIDFILE=$RUNDIR/$NAME.pid
+          EXTRAAFTER=
+
+
+      - path: "/etc/opendkim.conf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          Syslog                  yes
+          SyslogSuccess           yes
+          Canonicalization        relaxed/simple
+          Mode                    sv
+          SubDomains              no
+          OversignHeaders         From
+          UserID                  opendkim
+          UMask                   007
+          Socket                  local:/var/spool/postfix/opendkim/opendkim.sock
+          PidFile                 /run/opendkim/opendkim.pid
+          TrustAnchorFile         /usr/share/dns/root.key
+          Nameservers             8.8.8.8,1.1.1.1
+          SendReports yes
+          ReportAddress           "{{ ansible_domain }} Postmaster" <postmaster@"{{ ansible_domain }}">
+          KeyTable                refile:/etc/opendkim/key.table
+          SigningTable            refile:/etc/opendkim/signing.table
+          ExternalIgnoreList      /etc/opendkim/trusted.hosts
+          InternalHosts           /etc/opendkim/trusted.hosts
+
+    systemd_objects:
+      - name: "opendmarc.service"
+        enabled: true
+        # content: ""

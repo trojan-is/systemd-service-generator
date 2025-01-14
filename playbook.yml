@@ -2,5 +2,6 @@
 - hosts: localhost
   gather_facts: yes
   roles:
+    - packages
     - systemd_service_generator
     
