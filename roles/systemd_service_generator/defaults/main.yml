@@ -1,0 +1,7 @@
+---
+# Extra call dictionary, like init
+ansible_call:
+  name: ""
+  init: "false"
+
+full_init: false
