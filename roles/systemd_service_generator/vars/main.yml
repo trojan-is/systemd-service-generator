@@ -1,2 +1,0 @@
----
-service_restart_name: "{{ service_obj.name | default(omit) }}"
