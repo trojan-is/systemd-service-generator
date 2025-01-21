@@ -3,15 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# MacOS files
-*.DS_Store
-
-# Ansible files
-*ansible.log
-
-# VS code files
-.vscode
-
 # C extensions
 *.so
 

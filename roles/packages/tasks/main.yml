@@ -1,6 +1,0 @@
----
-- name: Install Packages
-  ansible.builtin.package:
-    name: "{{ packages }}"
-    state: present
-  when: packages is defined
