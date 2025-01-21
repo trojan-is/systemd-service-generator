@@ -5,7 +5,7 @@ _Description:_
 This playbook will prepare linux `systemd` services as per `systemd_services` <br>
 vars and install neccesary packages from `packages` dictionary. <br>
 
-_Avaiable tags and Extra variables:_
+_Available tags and Extra variables:_
 
 ```yaml
 Tags: NA
