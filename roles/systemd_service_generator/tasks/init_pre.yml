@@ -1,0 +1,6 @@
+---
+- name: "{{ service_obj.name }} :: Perform pre-shell command"
+  ansible.builtin.shell: "{{ item }}"
+  loop: "{{ service_obj.init.pre_shell_commands }}"
+  when: service_obj.init.pre_shell_commands is defined
+
