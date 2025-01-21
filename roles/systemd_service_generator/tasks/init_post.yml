@@ -1,5 +1,5 @@
 ---
 - name: "{{ service_obj.name }} :: Perform post-shell command"
-  shell: "{{ item }}"
+  ansible.builtin.shell: "{{ item }}"
   loop: "{{ service_obj.init.post_shell_commands }}"
   when: service_obj.init.post_shell_commands is defined

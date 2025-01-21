@@ -1,7 +1,14 @@
 ---
-- hosts: localhost
+- hosts: MX
   gather_facts: yes
-  roles:
-    - packages
-    - systemd_service_generator
-    
+  tasks:
+    - include_role:
+        name: packages
+
+    - include_role:
+        name: systemd_service_generator
+      loop: "{{ systemd_services }}"
+      loop_control:
+        loop_var: service_obj
+      when: systemd_services is defined
+        

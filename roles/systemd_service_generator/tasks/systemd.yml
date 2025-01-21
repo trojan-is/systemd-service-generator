@@ -2,29 +2,28 @@
 - block:
     - name: "{{ service_obj.name }} :: Create systemd service folder"
       ansible.builtin.file:
-        path: "/etc/systemd/system/{{ item.name }}.service.d"
+        path: "/etc/systemd/system/{{ service_obj.name  }}.service.d"
+        state: "directory"
         owner: "root"
         group: "root"
         mode: "0644"
 
     - name: "{{ service_obj.name }} :: Configure systemd service"
-      copy:
-        dest: "/etc/systemd/system/{{ item.name }}.service.d/override.conf"
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ service_obj.name }}.service.d/override.conf"
         owner: "root"
         group: "root"
         mode: "0644"
         backup: false
-        content: "{{ item.content | default(omit) }}"
+        content: "{{ service_obj.systemd_overrides.content | default(omit) }}"
       notify: "daemon reload"
-  loop: "{{ service_obj.systemd_objects. }}"
-  when: service_obj.systemd_objects.content is defined
+  when: service_obj.systemd_overrides.content is defined
 
 - name: run handlers
   meta: flush_handlers
 
 - name: "{{ service_obj.name }} :: Enable systemd service"
   ansible.builtin.systemd_service:
-    name: "{{ item.name }}"
-    enabled: "{{ item.enabled | default('false') }}"
-  loop: "{{ service_obj.systemd_objects }}"
-  when: service_obj.systemd_objects is defined
+    name: "{{ service_obj.name }}"
+    enabled: "{{ service_obj.systemd_overrides.enabled | default('false') }}"
+  when: service_obj.systemd_overrides is defined

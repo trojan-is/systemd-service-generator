@@ -1,19 +1,19 @@
 ---
 - block:
     - name: "{{ service_obj.name }} - Init Pre"
-      include: init_pre.yml
+      ansible.builtin.include_tasks: init_pre.yml
       when:
         - ansible_call.init | bool
         - ansible_call.name == service_obj.name
 
     - name: "{{ service_obj.name }} - Config"
-      include: config.yml
+      ansible.builtin.include_tasks: config.yml
 
     - name: "{{ service_obj.name }} - Systemd"
-      include: systemd.yml
+      ansible.builtin.include_tasks: systemd.yml
 
     - name: "{{ service_obj.name }} - Init Post"
-      include: init_post.yml
+      ansible.builtin.include_tasks: init_post.yml
       when:
         - ansible_call.init | bool
         - ansible_call.name == service_obj.name
@@ -22,15 +22,15 @@
 
 - block:
     - name: "{{ service_obj.name }} - Init Pre"
-      include: init_pre.yml
+      ansible.builtin.include_tasks: init_pre.yml
 
     - name: "{{ service_obj.name }} - Config"
-      include: config.yml
+      ansible.builtin.include_tasks: config.yml
 
     - name: "{{ service_obj.name }} - Systemd"
-      include: systemd.yml
+      ansible.builtin.include_tasks: systemd.yml
 
     - name: "{{ service_obj.name }} - Init Post"
-      include: init_post.yml
+      ansible.builtin.include_tasks: init_post.yml
   when:
     - full_init | bool

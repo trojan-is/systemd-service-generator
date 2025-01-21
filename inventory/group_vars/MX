@@ -6,39 +6,54 @@ packages:
   - "postfix-policyd-spf-python"
   - "opendkim"
   - "opendkim-tools"
+  - "dovecot-core"
+  - "dovecot-pop3d"
+  - "dovecot-lmtpd"
+  - "postgrey"
+  - "pflogsumm"
+  - "fail2ban"
 
 systemd_services:
   - name: "postfix"
-    init: []
-    #   pre_shell_commands: []
-    #   post_shell_commands: []
+    init: {}
+      # pre_shell_commands: []
+      # post_shell_commands: []
+    systemd_overrides:
+      enabled: true
+      # content: ""
     configs:
       - path: "/etc/postfix/main.cf"
         owner: "root"
         group: "root"
         backup: true
         content: |
-          {% include 'postfix/main.cf.j2' %}
+          {% include 'templates/postfix/main.cf.j2' %}
       - path: "/etc/postfix/master.cf"
         owner: "root"
         group: "root"
         backup: true
         content: |
-          {% include 'postfix/master.cf.j2' %}
-
-    systemd_objects:
-      - name: "postfix.service"
-        enabled: true
-        # content: ""
+          {% include 'templates/postfix/master.cf.j2' %}
+      - path: "/etc/postfix/header_checks"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          #/X-Spam-Level: \*{7,}/ REJECT
+          /To:.*<>/           DISCARD
+          /From:.*<>/         DISCARD
 
   - name: "opendmarc"
-    init: []
+    init:
       pre_shell_commands:
         - "mkdir -p /var/spool/postfix/opendmarc"
         - "chown -R opendmarc:opendmarc /var/spool/postfix/opendmarc"
         - "chmod -R 750 /var/spool/postfix/opendmarc/"
         - "adduser postfix opendmarc"
-    #   post_shell_commands: []
+      # post_shell_commands: []
+    systemd_overrides:
+      enabled: true
+      # content: ""
     configs:
       - path: "/etc/opendmarc.conf"
         owner: "root"
@@ -56,18 +71,12 @@ systemd_services:
           RequiredHeaders true
           SPFSelfValidate true
 
-    systemd_objects:
-      - name: "opendmarc.service"
-        enabled: true
-        # content: ""
-
   - name: "opendkim"
-    init: []
+    init:
       pre_shell_commands:
         - "gpasswd -a postfix opendkim"
         - "mkdir /var/spool/postfix/opendkim"
         - "chown opendkim:postfix /var/spool/postfix/opendkim"
-        - ""
         - "mkdir -p /etc/opendkim/keys"
         - "chown -R opendkim:opendkim /etc/opendkim"
         - "chmod 744 /etc/opendkim/keys"
@@ -75,22 +84,25 @@ systemd_services:
         - "opendkim-genkey -b 2048 -d {{ ansible_domain }} -D /etc/opendkim/keys/{{ ansible_domain }} -s default -v"
         - "chown opendkim:opendkim /etc/opendkim/keys/{{ ansible_domain }}/default.private"
         - "chmod 600 /etc/opendkim/keys/{{ ansible_domain }}/default.private"
-    #   post_shell_commands: []
+      # post_shell_commands: []
+    systemd_overrides:
+      enabled: true
+      # content: ""
     configs:
       - path: "/etc/opendkim/signing.table"
         owner: "root"
         group: "root"
         backup: true
         content: |
-          *@"{{ ansible_domain }}"     default._domainkey."{{ ansible_domain }}"
-          *@*."{{ ansible_domain }}"    default._domainkey."{{ ansible_domain }}"
+          *@{{ ansible_domain }}     default._domainkey.{{ ansible_domain }}
+          *@*.{{ ansible_domain }}    default._domainkey.{{ ansible_domain }}
 
       - path: "/etc/opendkim/key.table"
         owner: "root"
         group: "root"
         backup: true
         content: |
-          default._domainkey."{{ ansible_domain }}"     "{{ ansible_domain }}":default:/etc/opendkim/keys/"{{ ansible_domain }}"/default.private
+          default._domainkey.{{ ansible_domain }}     {{ ansible_domain }}:default:/etc/opendkim/keys/{{ ansible_domain }}/default.private
 
       - path: "/etc/opendkim/trusted.hosts"
         owner: "root"
@@ -99,7 +111,7 @@ systemd_services:
         content: |
           127.0.0.1
           localhost
-          ."{{ ansible_domain }}"
+          .{{ ansible_domain }}
 
       - path: "/etc/default/opendkim"
         owner: "root"
@@ -113,7 +125,6 @@ systemd_services:
           PIDFILE=$RUNDIR/$NAME.pid
           EXTRAAFTER=
 
-
       - path: "/etc/opendkim.conf"
         owner: "root"
         group: "root"
@@ -124,6 +135,11 @@ systemd_services:
           Canonicalization        relaxed/simple
           Mode                    sv
           SubDomains              no
+          AutoRestart             yes
+          AutoRestartRate         10/1M
+          Background              yes
+          DNSTimeout              5
+          SignatureAlgorithm      rsa-sha256
           OversignHeaders         From
           UserID                  opendkim
           UMask                   007
@@ -132,13 +148,118 @@ systemd_services:
           TrustAnchorFile         /usr/share/dns/root.key
           Nameservers             8.8.8.8,1.1.1.1
           SendReports yes
-          ReportAddress           "{{ ansible_domain }} Postmaster" <postmaster@"{{ ansible_domain }}">
+          ReportAddress           "{{ ansible_domain }} Postmaster" <postmaster@{{ ansible_domain }}>
           KeyTable                refile:/etc/opendkim/key.table
           SigningTable            refile:/etc/opendkim/signing.table
           ExternalIgnoreList      /etc/opendkim/trusted.hosts
           InternalHosts           /etc/opendkim/trusted.hosts
 
-    systemd_objects:
-      - name: "opendmarc.service"
-        enabled: true
-        # content: ""
+  - name: "dovecot"
+    init:
+      pre_shell_commands:
+        - "gpasswd -a mail dovecot"
+      # post_shell_commands: []
+    systemd_overrides:
+      enabled: true
+      content: |
+        [Service]
+        Restart=always
+        RestartSec=5s
+    configs:
+      - path: "/etc/dovecot/conf.d/10-auth.conf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          disable_plaintext_auth = yes
+          auth_username_format = %n
+          auth_mechanisms = plain login
+          !include auth-system.conf.ext
+
+      - path: "/etc/dovecot/conf.d/10-mail.conf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          mail_location = maildir:~/Maildir
+          namespace inbox {
+          inbox = yes
+          }
+          mail_privileged_group = mail
+          protocol !indexer-worker {
+          }
+          
+      - path: "/etc/dovecot/conf.d/10-master.conf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          service lmtp {
+            unix_listener /var/spool/postfix/private/dovecot-lmtp {
+              mode = 0600
+              user = postfix
+              group = postfix
+            }
+          }
+          service auth {
+            unix_listener /var/spool/postfix/private/auth {
+              mode = 0660
+              user = postfix
+              group = postfix
+            }
+          }
+
+      - path: "/etc/dovecot/conf.d/10-ssl.conf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          ssl = required
+          ssl_client_ca_dir = /etc/ssl/certs
+          ssl_cert = </var/spool/postfix/ssl/{{ ansible_fqdn }}.cer
+          ssl_key = </var/spool/postfix/ssl/{{ ansible_fqdn }}.key
+          ssl_prefer_server_ciphers = yes
+          ssl_min_protocol = TLSv1.2
+
+  - name: "postgrey"
+    init: {}
+      # pre_shell_commands: []
+      # post_shell_commands: []
+    systemd_overrides:
+      enabled: true
+      # content: ""
+    configs: []
+      # - path: ""
+      #   owner: ""
+      #   group: ""
+      #   backup: true
+      #   content: ""
+
+  - name: "fail2ban"
+    init: {}
+      # pre_shell_commands: []
+      # post_shell_commands: []
+    systemd_overrides:
+      enabled: true
+      # content: ""
+    configs:
+      - path: "/etc/fail2ban/jail.local"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          [postfix-flood-attack]
+          enabled  = true
+          bantime  = 60m
+          filter   = postfix-flood-attack
+          action   = iptables-multiport[name=postfix, port="http,https,smtp,submission,pop3,pop3s,imap,imaps,sieve", protocol=tcp]
+          logpath  = /var/log/mail.log
+
+      - path: "/etc/fail2ban/filter.d/postfix-flood-attack.conf"
+        owner: "root"
+        group: "root"
+        backup: true
+        content: |
+          [Definition]
+          failregex = lost connection after AUTH from (.*)\[<HOST>\]
+          ignoreregex =

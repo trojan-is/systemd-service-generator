@@ -1,12 +1,13 @@
 ---
 
 - name: "{{ service_obj.name }} :: Read systemd config"
-  shell: |
+  ansible.builtin.shell: |
     systemctl show -P CanReload {{ service_obj.name }}
-  register: systemd_unit_CanReload | bool
+  changed_when: false
+  register: systemd_unit_CanReload
 
 - name: "{{ service_obj.name }} :: Prepare configs"
-  copy:
+  ansible.builtin.copy:
     dest: "{{ item.path }}"
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
